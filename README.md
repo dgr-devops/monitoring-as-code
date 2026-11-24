@@ -116,10 +116,11 @@ InstanceDown critical cadvisor:8080 active
 
 **4. Los tests detectan regresiones**: cambiando un umbral (`< 0.10` → `< 0.01`) `promtool test rules` falla ([04](docs/evidencias/04-test-detecta-regresion.txt)); se revirtió después.
 
-**5. CI en GitHub Actions**: valida (job `validate`) y levanta el stack comprobando targets, reglas y dashboards (job `stack`).
+**5. CI en GitHub Actions** (verde en `main`): el job `validate` ejecuta `scripts/validate.sh` y el job `stack` levanta el stack en el runner y comprueba que los targets (salvo cAdvisor) están `up`, que hay 8 reglas cargadas y que Grafana tiene los 3 dashboards. El primer intento del job `stack` falló por consultar Grafana antes de que arrancase; se corrigió esperando a `/api/health`.
 
 ### No verificado / limitaciones
 
+- cAdvisor no se levanta en el CI (depende del runtime del host); sí se verificó en local.
 - Solo se probó en un host (Linux x86_64, Docker 29); cAdvisor puede necesitar ajustes en otros runtimes (rootless, Docker Desktop).
 - La notificación real a Slack/email/PagerDuty no se probó: el receptor es un webhook local de laboratorio.
 - El resto de alertas (CPU, disco, memoria, reinicios, endpoint) están verificadas con tests unitarios, pero solo `InstanceDown` se provocó en vivo.
