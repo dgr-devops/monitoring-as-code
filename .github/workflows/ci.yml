@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validar configuración y reglas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: promtool, amtool, blackbox, compose y dashboards
+        run: ./scripts/validate.sh
+
+  stack:
+    name: Levantar el stack y comprobar targets
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar el stack
+        run: docker compose up -d prometheus alertmanager grafana node-exporter blackbox webhook
+      # cAdvisor se excluye en CI: depende del runtime de contenedores del host.
+      - name: Targets UP, reglas cargadas y dashboards provisionados
+        run: |
+          for i in $(seq 1 30); do
+            down=$(curl -s localhost:9090/api/v1/targets | python3 -c "import json,sys;print(sum(t['health']!='up' and t['labels']['job']!='cadvisor' for t in json.load(sys.stdin)['data']['activeTargets']))" 2>/dev/null || echo 99)
+            [ "$down" = "0" ] && break; sleep 4
+          done
+          curl -s localhost:9090/api/v1/targets | python3 -c "
+          import json,sys
+          ts=[t for t in json.load(sys.stdin)['data']['activeTargets'] if t['labels']['job']!='cadvisor']
+          [print(t['labels']['job'],t['health']) for t in ts]
+          sys.exit(any(t['health']!='up' for t in ts))"
+          curl -s localhost:9090/api/v1/rules | python3 -c "
+          import json,sys
+          n=sum(len(g['rules']) for g in json.load(sys.stdin)['data']['groups']); print(n,'reglas'); sys.exit(n<8)"
+          curl -s -u admin:admin 'localhost:3000/api/search?type=dash-db' | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin); print([x['uid'] for x in d]); sys.exit(len(d)<3)"
+      - name: Logs si falla
+        if: failure()
+        run: docker compose logs --tail=50
