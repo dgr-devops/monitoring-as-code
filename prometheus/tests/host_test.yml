@@ -1,0 +1,117 @@
+rule_files:
+  - ../rules/host.yml
+
+evaluation_interval: 1m
+
+tests:
+  # --- InstanceDown: dispara tras 1m con up==0 y se resuelve al volver ---
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node", instance="node-exporter:9100"}'
+        values: "1 1 0 0 0 0 1 1"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: InstanceDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: InstanceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node
+              instance: node-exporter:9100
+            exp_annotations:
+              summary: "Target caído: node (node-exporter:9100)"
+              description: "Prometheus no logra scrapear node-exporter:9100 (job node) desde hace más de 1 minuto."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
+      - eval_time: 7m
+        alertname: InstanceDown
+        exp_alerts: []
+
+  # --- HighCpuUsage: 100% CPU (idle=0) durante >10m dispara; con CPU baja no ---
+  - interval: 1m
+    input_series:
+      - series: 'node_cpu_seconds_total{mode="idle", instance="h1", cpu="0"}'
+        values: "0+0x30"
+      - series: 'node_cpu_seconds_total{mode="idle", instance="h2", cpu="0"}'
+        values: "0+55x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HighCpuUsage
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: h1
+            exp_annotations:
+              summary: "CPU alta en h1"
+              description: "Uso de CPU 100.0% (>85%) sostenido durante 10 minutos."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/alta-carga-cpu.md"
+
+  # --- MemoryPressure: 5% disponible dispara; 50% no ---
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="h1"}'
+        values: "1000x15"
+      - series: 'node_memory_MemAvailable_bytes{instance="h1"}'
+        values: "50x15"
+      - series: 'node_memory_MemTotal_bytes{instance="h2"}'
+        values: "1000x15"
+      - series: 'node_memory_MemAvailable_bytes{instance="h2"}'
+        values: "500x15"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MemoryPressure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: h1
+            exp_annotations:
+              summary: "Presión de memoria en h1"
+              description: "Solo 5% de la RAM está disponible desde hace 5 minutos."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/memoria-agotada-oom.md"
+
+  # --- Disco: predict_linear (se llena en <24h) y umbral crítico <10% ---
+  - interval: 1m
+    input_series:
+      # h1: 40% libre, perdiendo ~1GB/h sobre 100GB -> se agota en ~40h?  Aquí pierde 1% cada 5 min
+      - series: 'node_filesystem_avail_bytes{instance="h1", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "40000-100x400"
+      - series: 'node_filesystem_size_bytes{instance="h1", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "100000x400"
+      # h2: estable al 40% libre -> no dispara
+      - series: 'node_filesystem_avail_bytes{instance="h2", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "40000x400"
+      - series: 'node_filesystem_size_bytes{instance="h2", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "100000x400"
+      # h3: 5% libre estable -> crítico
+      - series: 'node_filesystem_avail_bytes{instance="h3", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "5000x400"
+      - series: 'node_filesystem_size_bytes{instance="h3", mountpoint="/", device="sda1", fstype="ext4"}'
+        values: "100000x400"
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: DiskWillFillIn24h
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: h1
+              mountpoint: /
+              device: sda1
+              fstype: ext4
+            exp_annotations:
+              summary: "El disco / se llenará en <24h en h1"
+              description: "Según la tendencia de las últimas 6h, / (sda1) se queda sin espacio en menos de 24 horas."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/disco-lleno.md"
+      - eval_time: 120m
+        alertname: DiskSpaceCritical
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              instance: h3
+              mountpoint: /
+              device: sda1
+              fstype: ext4
+            exp_annotations:
+              summary: "Menos del 10% libre en / (h3)"
+              description: "Quedan 5% libres en /."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/disco-lleno.md"

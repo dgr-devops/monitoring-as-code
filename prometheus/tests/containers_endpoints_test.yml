@@ -1,0 +1,65 @@
+rule_files:
+  - ../rules/containers.yml
+  - ../rules/endpoints.yml
+
+evaluation_interval: 1m
+
+tests:
+  # --- Reinicios: start_time cambia 4 veces en 15m -> dispara; contenedor estable no ---
+  - interval: 1m
+    input_series:
+      - series: 'container_start_time_seconds{name="flappy"}'
+        values: "100 100 200 300 400 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500"
+      - series: 'container_start_time_seconds{name="stable"}'
+        values: "100x19"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: ContainerRestartingFrequently
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              name: flappy
+            exp_annotations:
+              summary: "Contenedor flappy reiniciándose en bucle"
+              description: "El contenedor flappy se ha reiniciado 4 veces en 15 minutos."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
+      - eval_time: 19m
+        alertname: ContainerRestartingFrequently
+        exp_alerts: []
+
+  # --- EndpointDown: falla 3m -> dispara; se resuelve al recuperarse ---
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{job="blackbox-http", instance="http://app:8080"}'
+        values: "1 1 0 0 0 0 1 1"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EndpointDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: EndpointDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: blackbox-http
+              instance: "http://app:8080"
+            exp_annotations:
+              summary: "Endpoint no responde: http://app:8080"
+              description: "El sondeo HTTP a http://app:8080 falla (sin 2xx) desde hace 2 minutos."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
+      - eval_time: 7m
+        alertname: EndpointDown
+        exp_alerts: []
+
+  # --- Watchdog siempre activa ---
+  - interval: 1m
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels:
+              severity: none
+            exp_annotations:
+              summary: "Alerta latido: la cadena de alertado funciona"
+              description: "Esta alerta debe estar SIEMPRE activa. Si desaparece, Prometheus o Alertmanager no están evaluando/enviando alertas."
+              runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
