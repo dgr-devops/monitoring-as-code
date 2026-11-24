@@ -28,6 +28,7 @@ jobs:
       # cAdvisor se excluye en CI: depende del runtime de contenedores del host.
       - name: Targets UP, reglas cargadas y dashboards provisionados
         run: |
+          curl -s --retry 30 --retry-delay 3 --retry-connrefused --retry-all-errors -o /dev/null localhost:3000/api/health
           for i in $(seq 1 30); do
             down=$(curl -s localhost:9090/api/v1/targets | python3 -c "import json,sys;print(sum(t['health']!='up' and t['labels']['job']!='cadvisor' for t in json.load(sys.stdin)['data']['activeTargets']))" 2>/dev/null || echo 99)
             [ "$down" = "0" ] && break; sleep 4
