@@ -1,0 +1,35 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: webhook-default
+  group_by: [alertname, instance]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="none"]      # Watchdog: no notificar
+      receiver: "null"
+    - matchers: [severity="critical"]
+      receiver: webhook-critical
+      repeat_interval: 1h
+    - matchers: [severity="warning"]
+      receiver: webhook-warning
+
+inhibit_rules:
+  # Si el target está caído, silencia avisos de menor severidad de la misma instancia.
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="warning"]
+    equal: [instance]
+
+receivers:
+  - name: "null"
+  - name: webhook-default
+    webhook_configs:
+      - url: http://webhook:5001/default
+  - name: webhook-critical
+    webhook_configs:
+      - url: http://webhook:5001/critical
+  - name: webhook-warning
+    webhook_configs:
+      - url: http://webhook:5001/warning
