@@ -1,0 +1,11 @@
+groups:
+  - name: containers
+    rules:
+      - alert: ContainerRestartingFrequently
+        expr: changes(container_start_time_seconds{name!=""}[15m]) > 2
+        labels:
+          severity: warning
+        annotations:
+          summary: "Contenedor {{ $labels.name }} reiniciándose en bucle"
+          description: "El contenedor {{ $labels.name }} se ha reiniciado {{ $value }} veces en 15 minutos."
+          runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"

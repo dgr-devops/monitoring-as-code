@@ -1,0 +1,21 @@
+groups:
+  - name: endpoints
+    rules:
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Endpoint no responde: {{ $labels.instance }}"
+          description: "El sondeo HTTP a {{ $labels.instance }} falla (sin 2xx) desde hace 2 minutos."
+          runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
+
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alerta latido: la cadena de alertado funciona"
+          description: "Esta alerta debe estar SIEMPRE activa. Si desaparece, Prometheus o Alertmanager no están evaluando/enviando alertas."
+          runbook_url: "https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md"
