@@ -1,0 +1,14 @@
+$ (mutación) cambio el umbral "< 0.10" a "< 0.01" en host.yml (afecta a MemoryPressure y DiskSpaceCritical) y relanzo los tests:
+== promtool test rules ==
+  SUCCESS
+
+  FAILED:
+    alertname: MemoryPressure, time: 10m, 
+        exp:[
+            0:
+              Labels:{alertname="MemoryPressure", instance="h1", severity="warning"}
+              Annotations:{description="Solo 5% de la RAM está disponible desde hace 5 minutos.", runbook_url="https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/memoria-agotada-oom.md", summary="Presión de memoria en h1"}
+            ], 
+        got:[]
+    alertname: DiskSpaceCritical, time: 2h, 
+        exp:[

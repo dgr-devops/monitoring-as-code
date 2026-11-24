@@ -1,0 +1,21 @@
+# paneles con datos
+node_memory_MemAvailable_bytes -> 1 series 18438234112
+container_memory_working_set_bytes{name!=""} -> 0 series 
+probe_success -> 2 series 1
+
+# Provocando fallo: docker compose stop cadvisor
+ Container monitoring-cadvisor-1 Stopped 
+08:45:37
+08:46:50
+$ Prometheus alerts
+Watchdog none None firing
+InstanceDown critical cadvisor:8080 firing
+
+$ Alertmanager /api/v2/alerts
+InstanceDown critical cadvisor:8080 active 
+  runbook_url: https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md 
+  description: Prometheus no logra scrapear cadvisor:8080 (job cadvisor) desde hace más de 1 minuto.
+Watchdog none None active 
+  runbook_url: https://github.com/dgr-devops/runbooks-and-postmortems/blob/main/runbooks/servicio-caido.md 
+  description: Esta alerta debe estar SIEMPRE activa. Si desaparece, Prometheus o Alertmanager no están evaluando/enviando alertas.
+[webhook/critical] status=firing alertname=InstanceDown severity=critical instance=cadvisor:8080

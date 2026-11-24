@@ -1,0 +1,22 @@
+$ contenedores vistos por cAdvisor (solo los de este stack)
+monitoring-alertmanager-1 prom/alertmanager:v0.28.1
+monitoring-blackbox-1 prom/blackbox-exporter:v0.27.0
+monitoring-cadvisor-1 ghcr.io/google/cadvisor:v0.61.1
+monitoring-cadvisor-1 ghcr.io/google/cadvisor:v0.61.1
+monitoring-grafana-1 grafana/grafana:12.2.0
+monitoring-node-exporter-1 prom/node-exporter:v1.9.1
+monitoring-prometheus-1 prom/prometheus:v3.5.0
+monitoring-webhook-1 python:3.13-slim
+
+$ targets tras recuperar cadvisor
+alertmanager up
+blackbox-http up
+blackbox-http up
+cadvisor up
+node up
+prometheus up
+
+$ Alertmanager (InstanceDown debe estar resuelta/ausente)
+['Watchdog']
+[webhook/critical] status=firing alertname=InstanceDown severity=critical instance=cadvisor:8080
+[webhook/critical] status=resolved alertname=InstanceDown severity=critical instance=cadvisor:8080

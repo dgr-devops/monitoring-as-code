@@ -1,0 +1,25 @@
+$ curl /api/v1/targets (resumen)
+alertmanager    alertmanager:9093                   up
+blackbox-http   http://grafana:3000/api/health      up
+blackbox-http   http://prometheus:9090/-/healthy    up
+cadvisor        cadvisor:8080                       up
+node            node-exporter:9100                  up
+prometheus      prometheus:9090                     up
+
+$ curl grafana /api/search (dashboards)
+alerts-overview | Alerts & targets | Monitoring
+containers | Containers (cAdvisor) | Monitoring
+node-overview | Node overview | Monitoring
+
+$ datasources
+Prometheus prometheus http://prometheus:9090
+
+$ reglas cargadas
+containers ContainerRestartingFrequently ok inactive
+endpoints EndpointDown ok inactive
+endpoints Watchdog ok firing
+host InstanceDown ok inactive
+host HighCpuUsage ok pending
+host DiskWillFillIn24h ok inactive
+host DiskSpaceCritical ok inactive
+host MemoryPressure ok inactive
